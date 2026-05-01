@@ -1,0 +1,23 @@
+demo*
+ttsim*
+**/__pycache__
+*.egg-info/
+.venv
+venv
+.env
+.vscode
+oss-cad-suite
+.ltex
+docker-image
+.claude
+.codex
+.coverage*
+CLAUDE.md
+fabulous_nix
+build
+
+# Documentation build artifacts (auto-generated in CI)
+docs/build/
+docs/source/references/*.rst
+!docs/source/references/index.rst
+docs/source/generated_doc/

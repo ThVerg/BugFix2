@@ -1,0 +1,668 @@
+"""FABulous settings management and environment configuration.
+
+This module handles configuration settings for the FABulous FPGA framework, including
+tool paths, project settings, and environment variable management.
+"""
+
+import os
+import re
+from importlib.metadata import version as meta_version
+from pathlib import Path
+from shutil import which
+from typing import Self
+
+import ciel
+import typer
+from ciel.common import get_ciel_home
+from ciel.source import StaticWebDataSource
+from dotenv import set_key
+from librelane.common.misc import get_pdk_hash
+from loguru import logger
+from packaging.version import Version
+from pydantic import (
+    Field,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+)
+
+from fabulous.fabric_definition.define import HDLType
+
+# User configuration directory for FABulous
+FAB_USER_CONFIG_DIR = Path(typer.get_app_dir("FABulous", force_posix=True))
+MODELS_PACK_REQUIRED_MODULES: list[str] = [
+    "config_latch",
+    "my_buf",
+    "clk_buf",
+    "cus_mux41",
+    "cus_mux21",
+    "cus_mux81",
+    "cus_mux161",
+]
+
+
+class FABulousSettings(BaseSettings):
+    """FABulous settings.
+
+    Tool paths are resolved lazily during validation so that environment variable setup
+    (including PATH updates for oss-cad-suite) can occur beforehand.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="FAB_", case_sensitive=False)
+
+    user_config_dir: Path = Field(default_factory=lambda: FAB_USER_CONFIG_DIR)
+
+    oss_cad_suite: Path | None = None
+    yosys_path: Path | str = Field(default="yosys", validate_default=True)
+    opensta_path: Path | str = Field(default="sta", validate_default=True)
+    nextpnr_path: Path | str = Field(default="nextpnr-generic", validate_default=True)
+    iverilog_path: Path | str = Field(default="iverilog", validate_default=True)
+    vvp_path: Path | str = Field(default="vvp", validate_default=True)
+    ghdl_path: Path | str = Field(default="ghdl", validate_default=True)
+    klayout_path: Path | str = Field(default="klayout", validate_default=True)
+    openroad_path: Path | str = Field(default="openroad", validate_default=True)
+    fabulator_root: Path | None = None
+
+    proj_dir: Path = Field(default_factory=Path.cwd)
+    proj_lang: HDLType = HDLType.VERILOG
+    models_pack: Path | None = None
+    switch_matrix_debug_signal: bool = False
+    proj_version_created: Version = Version("0.0.1")
+    proj_version: Version = Version(meta_version("FABulous-FPGA"))
+    version: Version = Field(
+        default=Version(meta_version("FABulous-FPGA")),
+        deprecated=True,
+        description="Deprecated, use proj_version instead",
+    )
+
+    # CLI variable
+    editor: str | None = None
+    verbose: int = 0
+    debug: bool = False
+    nix_shell: str | None = None
+    nix_no_check: bool = False
+
+    # GDS variables
+    pdk_root: Path | None = Field(
+        default=None,
+        description="Root directory of the PDK installation",
+    )
+    pdk: str | None = Field(
+        default=None,
+        description="PDK name (e.g. 'ihp-sg13g2')",
+    )
+    pdk_hash: str | None = Field(
+        default=None,
+        description="Specific PDK version hash; "
+        "auto-resolved from librelane when omitted "
+        "if the PDK is supported by ciel",
+    )
+    fabric_die_area: tuple[int, int, int, int] = (0, 0, 1000, 1000)
+
+    # Windows warning acknowledgement
+    windows_warning_acknowledged: bool = False
+
+    @field_validator("oss_cad_suite", mode="before")
+    @classmethod
+    def parse_oss_cad_suite_path(cls, value: Path | str | None) -> Path | None:
+        """Parse oss-cad-suite path and publish it to $PATH.
+
+        Parses the oss-cad-suite path from env var and publishes it to PATH before the
+        init of other tools, that then can be found in PATH.
+        """
+        if value is None:
+            return None
+
+        ocs_path = None
+        if isinstance(value, str):
+            ocs_path = Path(value).absolute()
+        elif isinstance(value, Path):
+            ocs_path = value.absolute()
+
+        if ocs_path.is_dir():
+            if (ocs_path / "bin").is_dir():
+                ocs_path = ocs_path / "bin"
+            logger.info(f"Using oss-cad-suite path: {ocs_path}")
+
+            # Add the oss-cad-suite bin folder to PATH
+            os.environ["PATH"] += os.pathsep + ocs_path.as_posix()
+            return ocs_path
+
+        logger.warning(
+            f"Could not find oss-cad-suite path{ocs_path}, ignoring setting."
+        )
+        return None
+
+    @field_validator("proj_version", "proj_version_created", "version", mode="before")
+    @classmethod
+    def parse_version_str(cls, value: str | Version) -> Version:
+        """Parse version from string or Version object."""
+        if isinstance(value, str):
+            return Version(value)
+        return value
+
+    @field_validator("models_pack", mode="after")
+    @classmethod
+    def parse_models_pack(cls, value: Path | None, info: ValidationInfo) -> Path | None:  # type: ignore[override]
+        """Validate and normalise models_pack path based on project language.
+
+        Uses already-validated proj_lang from info.data when available. Accepts None /
+        empty string to mean unset.
+        """
+        proj_lang = info.data.get("proj_lang")
+        if value is None or value == "":
+            if p := info.data.get("proj_dir"):
+                p = Path(p).absolute()
+            else:
+                raise ValueError("Project directory is not set.")
+            if proj_lang == HDLType.VHDL:
+                mp = p / "Fabric" / "my_lib.vhdl"
+                if mp.exists():
+                    logger.warning(
+                        f"Models pack path is not set. Guessing models pack as: {mp}"
+                    )
+                    return mp
+                mp = p / "Fabric" / "models_pack.vhdl"
+                if mp.exists():
+                    logger.warning(
+                        f"Models pack path is not set. Guessing models pack as: {mp}"
+                    )
+                    return mp
+                logger.warning(
+                    "Cannot find a suitable models pack. "
+                    "This might lead to error if not set."
+                )
+
+            if proj_lang in {HDLType.VERILOG, HDLType.SYSTEM_VERILOG}:
+                mp = p / "Fabric" / "models_pack.v"
+                if mp.exists():
+                    logger.warning(
+                        f"Models pack path is not set. Guessing models pack as: {mp}"
+                    )
+                    return mp
+                logger.warning(
+                    "Cannot find a suitable models pack. "
+                    "This might lead to error if not set."
+                )
+
+            return None
+
+        if not value.is_file():
+            # models_pack path is stored as a relative path in .env.
+            # Resolve it relative to the .FABulous directory (where .env lives).
+            if proj_dir := info.data.get("proj_dir"):
+                proj_dir = Path(proj_dir).absolute()
+                if not proj_dir.exists():
+                    raise ValueError(f"Project directory {proj_dir} does not exist.")
+            else:
+                raise ValueError("Project directory is not set.")
+
+            fab_dir = proj_dir / ".FABulous"
+            resolved = None
+
+            if not value.is_absolute():
+                # New format: relative to .FABulous dir (e.g. "../Fabric/models_pack.v")
+                candidate = (fab_dir / value).resolve()
+                if candidate.is_file():
+                    resolved = candidate
+                elif proj_dir.name in value.parts:
+                    # Backward compat: old format had proj_dir name as prefix
+                    # (e.g. "my_project/Fabric/models_pack.v")
+                    parts = value.parts
+                    index = parts.index(proj_dir.name)
+                    candidate = proj_dir.joinpath(*parts[index + 1 :]).resolve()
+                    if candidate.is_file():
+                        resolved = candidate
+
+            if resolved is None:
+                raise ValueError(
+                    f"Models pack file does not exist: {value}"
+                    " Check your FAB_MODELS_PACK env var setting."
+                )
+            value = resolved
+
+        # Retrieve previously validated proj_lang (falls back to default enum value)
+        try:
+            # If provided as string earlier but not validated yet
+            if isinstance(proj_lang, str):
+                proj_lang = HDLType[proj_lang.upper()]
+        except KeyError:
+            raise ValueError(
+                "Invalid project language while validating models_pack"
+            ) from None
+
+        if proj_lang in {
+            HDLType.VERILOG,
+            HDLType.SYSTEM_VERILOG,
+        } and value.suffix not in {".v", ".sv"}:
+            raise ValueError(
+                "Models pack for Verilog/System Verilog must be a .v or .sv file"
+            )
+        if proj_lang == HDLType.VHDL and value.suffix not in {".vhdl", ".vhd"}:
+            raise ValueError("Models pack for VHDL must be a .vhdl or .vhd file")
+
+        # YosysJson cannot be used here (circular import + settings not yet
+        # fully initialised), so we do a lightweight regex scan instead.
+        if value.suffix in {".v", ".sv", ".vhd", ".vhdl"}:
+            content = value.read_text()
+
+            if value.suffix in {".v", ".sv"}:
+                # Strip comments before scanning so commented-out module
+                # declarations are not mistaken for real ones.
+                content = re.sub(r"/\*.*?\*/", "", content, flags=re.DOTALL)
+                content = re.sub(r"//[^\n]*", "", content)
+                found = set(re.findall(r"^\s*module\s+(\w+)", content, re.MULTILINE))
+            else:
+                # VHDL only has single-line comments ("--").
+                content = re.sub(r"--[^\n]*", "", content)
+                found = {
+                    match.lower()
+                    for match in re.findall(
+                        r"^\s*entity\s+(\w+)\s+is",
+                        content,
+                        re.MULTILINE | re.IGNORECASE,
+                    )
+                }
+
+            missing = [m for m in MODELS_PACK_REQUIRED_MODULES if m not in found]
+            if missing:
+                logger.warning(
+                    f"The models pack at '{value}' is missing the following "
+                    f"models-pack definitions: {missing}. "
+                    "The models pack may be outdated. Update it to a recent "
+                    "version from upstream FABulous, or use an older version "
+                    "of FABulous."
+                )
+
+        logger.info(f"Using models pack at: {value.absolute()}")
+        return value.absolute()
+
+    @field_validator("user_config_dir", mode="after")
+    @classmethod
+    def ensure_user_config_dir(cls, value: Path | None) -> Path | None:
+        """Ensure user config directory exists, creating if necessary."""
+        if value is None:
+            return None
+        # Create the directory if it doesn't exist
+        value.mkdir(parents=True, exist_ok=True)
+        return value
+
+    @field_validator("proj_dir", mode="after")
+    @classmethod
+    def is_valid_project_dir(cls, value: Path | None) -> Path | None:
+        """Check if project_dir is a valid directory."""
+        if value is None:
+            raise ValueError("Project directory is not set.")
+        if not (Path(value) / ".FABulous").exists():
+            raise ValueError(f"{value} is not a FABulous project")
+        return value.resolve()
+
+    @field_validator("proj_lang", mode="before")
+    @classmethod
+    def parse_proj_lang(cls, value: str | HDLType) -> str | HDLType:
+        """Parse project language from string or HDLType enum."""
+        if isinstance(value, HDLType):
+            return value
+        if isinstance(value, str):
+            return value.strip().lower()
+        raise ValueError("Project language must be a string or HDLType enum")
+
+    @field_validator("proj_lang", mode="after")
+    @classmethod
+    def validate_proj_lang(cls, value: str | HDLType) -> HDLType:
+        """Validate and normalise the project language to HDLType enum."""
+        if isinstance(value, HDLType):
+            return value
+        key = value.strip().upper()
+        # Allow common aliases
+        alias_map = {
+            "VERILOG": "VERILOG",
+            "V": "VERILOG",
+            "SYSTEM_VERILOG": "SYSTEM_VERILOG",
+            "SV": "SYSTEM_VERILOG",
+            "VHDL": "VHDL",
+            "VHD": "VHDL",
+        }
+        if key not in alias_map:
+            raise ValueError(f"Invalid project language: {value}")
+        return HDLType[alias_map[key]]
+
+    # Resolve external tool paths only after object creation (post env setup)
+    @field_validator(
+        "yosys_path",
+        "opensta_path",
+        "nextpnr_path",
+        "iverilog_path",
+        "vvp_path",
+        "ghdl_path",
+        "openroad_path",
+        "klayout_path",
+        mode="before",
+    )
+    @classmethod
+    def resolve_tool_paths(
+        cls, value: Path | str | None, info: ValidationInfo
+    ) -> Path | str:
+        """Resolve tool paths by checking if tools are available in `PATH`.
+
+        This method is used as a field validator to automatically resolve tool paths
+        during settings initialization. If a tool path is not explicitly provided,
+        it searches for the tool in the system `PATH`.
+
+        Parameters
+        ----------
+        value : Path | str | None
+            The explicitly provided tool path, if any.
+        info : ValidationInfo
+            Validation context containing field information.
+
+        Returns
+        -------
+        Path | str
+            The resolved path to the tool if found, tool name otherwise.
+
+        Notes
+        -----
+        This method logs a warning if a tool is not found in `PATH`, as some
+        features may be unavailable without the tool.
+        """
+        if isinstance(value, Path):
+            return value
+        if isinstance(value, str) and value != "" and Path(value).exists():
+            return Path(value).resolve()
+        tool_map = {
+            "yosys_path": "yosys",
+            "opensta_path": "sta",
+            "nextpnr_path": "nextpnr-generic",
+            "iverilog_path": "iverilog",
+            "vvp_path": "vvp",
+            "ghdl_path": "ghdl",
+            "openroad_path": "openroad",
+            "klayout_path": "klayout",
+        }
+        tool = tool_map.get(info.field_name)
+        tool_path = which(tool)
+        logger.info(f"Resolved {tool} path: {tool_path}")
+        if tool_path is not None:
+            return Path(tool_path).resolve()
+
+        logger.warning(
+            f"{tool} not found in PATH during settings initialisation. "
+            f"Some features may be unavailable."
+        )
+        return tool_map[info.field_name]
+
+    @model_validator(mode="after")
+    def check_pdk(self) -> Self:
+        """Check if PDK_root and PDK are set correctly.
+
+        When a supported PDK family is configured and ``pdk_hash`` has not been
+        provided, this validator resolves the recommended hash from librelane
+        and auto-installs/activates the PDK via ciel.
+
+        Validation rules
+        ----------------
+        1. Both ``pdk`` and ``pdk_root`` are None  -> warn, return (GDS unavailable)
+        2. ``pdk_root`` set but ``pdk`` is None    -> raise ValueError
+        3. ``pdk`` set, ``pdk_root`` None, ciel family   -> auto-resolve pdk_root
+        4. ``pdk`` set, ``pdk_root`` None, not ciel       -> raise ValueError
+        5. Both set, not ciel family               -> info log + return
+        6. Both set, ciel family                   -> hash resolution + enable
+        """
+        # Case 1: neither set
+        if self.pdk is None and self.pdk_root is None:
+            logger.warning(
+                "PDK_root or PDK is not set. Back-end GDS features may be unavailable."
+            )
+            return self
+
+        # Case 2: pdk_root without pdk
+        if self.pdk is None:
+            raise ValueError(
+                "FAB_PDK_ROOT is set but FAB_PDK is not. "
+                "Please set FAB_PDK to the PDK name."
+            )
+
+        family_map = {}
+        for name, detail in ciel.families.Family.by_name.items():
+            family_map[name] = name
+            for variant in detail.variants:
+                family_map[variant] = name
+
+        pdk_family = family_map.get(self.pdk)
+        ciel_family: ciel.families.Family | None = (
+            ciel.families.Family.by_name[pdk_family] if pdk_family is not None else None
+        )
+
+        # Case 3 & 4: pdk set but pdk_root missing
+        if self.pdk_root is None:
+            if ciel_family is not None:
+                # Case 3: supported family -> auto-resolve root from ciel home
+                self.pdk_root = Path(get_ciel_home()) / ciel_family.name
+            else:
+                # Case 4: unsupported family without root -> error
+                raise ValueError(
+                    f"PDK '{self.pdk}' is not supported by ciel and "
+                    "FAB_PDK_ROOT is not set. "
+                    "Please set the FAB_PDK_ROOT environment variable to the "
+                    "PDK installation path."
+                )
+
+        # Case 5: both set, non-ciel family -> manual setup
+        if ciel_family is None:
+            logger.info(
+                f"PDK '{self.pdk}' is not recognised as a supported family by ciel. "
+                "Assume custom PDK with manual setup."
+            )
+            pdk_path = self.pdk_root.resolve()
+            if not pdk_path.exists():
+                raise ValueError(f"FAB_PDK_ROOT path {pdk_path} does not exist.")
+            return self
+
+        # Case 6: both set, ciel family -> hash resolution + enable
+        recommended_hash = get_pdk_hash(ciel_family.name)
+        if self.pdk_hash is None:
+            self.pdk_hash = recommended_hash
+
+        elif self.pdk_hash != recommended_hash:
+            logger.warning(
+                f"PDK hash mismatch: configured '{self.pdk_hash}' "
+                f"vs recommended '{recommended_hash}' for "
+                f"family '{ciel_family}'. "
+                "You may experience compatibility issues."
+            )
+
+        ciel.manage.enable(
+            pdk_root=str(self.pdk_root),
+            pdk=ciel_family.name,
+            version=self.pdk_hash,
+            data_source=StaticWebDataSource(
+                "https://fossi-foundation.github.io/ciel-releases"
+            ),
+        )
+        logger.info(
+            f"Auto-resolved PDK hash: {self.pdk_hash[:12]} for family '{ciel_family}'"
+        )
+
+        pdk_path = self.pdk_root.resolve()
+        if not pdk_path.exists():
+            raise ValueError(f"PDK path {pdk_path} does not exist.")
+        logger.info(f"Using PDK at {pdk_path}")
+        return self
+
+
+# Module-level singleton pattern for settings management
+_context_instance: FABulousSettings | None = None
+
+
+def init_context(
+    project_dir: Path | None = None,
+    global_dot_env: Path | None = None,
+    project_dot_env: Path | None = None,
+    api_mode: bool = False,
+) -> FABulousSettings:
+    """Initialize the global FABulous context with settings.
+
+    This function gathers .env files and lets the pydantic-settings system handle
+    project directory resolution.
+
+    Parameters
+    ----------
+    project_dir : Path | None
+        Project directory path (if None, uses cwd)
+    global_dot_env : Path | None
+        Path to a global .env file (if any)
+    project_dot_env : Path | None
+        Path to a project-specific .env file (if any)
+    api_mode: bool
+        If True, skips all validation for API mode
+
+    Returns
+    -------
+    FABulousSettings
+        The initialized FABulousSettings instance
+    """
+    global _context_instance
+
+    # Gather .env files in priority order
+    env_files: list[Path] = []
+
+    if api_mode:
+        logger.debug("API mode: skipping all validation")
+        return FABulousSettings.model_construct(
+            nix_shell=os.environ.get("FAB_NIX_SHELL"),
+        )
+
+    # 1. User config .env file (global)
+    user_config_env = FAB_USER_CONFIG_DIR / ".env"
+    if user_config_env.exists():
+        env_files.append(user_config_env)
+        logger.debug(f"Loading user config .env file from {user_config_env}")
+
+    # 2. User-provided global .env file
+    if global_dot_env is not None and global_dot_env.exists():
+        env_files.append(global_dot_env)
+        logger.info(f"Loading global .env file from {global_dot_env}")
+    else:
+        if global_dot_env is not None:
+            logger.warning(
+                f"Explicit Global .env file: {global_dot_env} is provided, "
+                "but this is not found, this entry is ignored"
+            )
+
+    # 3. cwd project dir .env
+    if project_dir is None and (Path().cwd() / ".FABulous" / ".env").exists():
+        env_files.append(Path().cwd() / ".FABulous" / ".env")
+        logger.debug("Loading project .env file from cwd")
+
+    # 4. explicit project dir .env
+    if project_dir is not None and (project_dir / ".FABulous" / ".env").exists():
+        env_files.append(project_dir / ".FABulous" / ".env")
+        logger.debug(f"Loading project .env file from project_dir: {project_dir}")
+
+    # 5. User-provided project .env file (highest .env priority)
+    if project_dot_env and project_dot_env.exists():
+        env_files.append(project_dot_env)
+        logger.info(f"Loading project .env file from {project_dot_env}")
+    else:
+        if project_dot_env is not None:
+            logger.warning(
+                f"Explicit project .env file: {project_dot_env} is provided, "
+                "but this is not found, this entry is ignored"
+            )
+
+    if project_dir:
+        _context_instance = FABulousSettings(
+            proj_dir=project_dir, _env_file=tuple(env_files)
+        )
+    else:
+        _context_instance = FABulousSettings(_env_file=tuple(env_files))
+
+    return _context_instance
+
+
+def get_context() -> FABulousSettings:
+    """Get the global FABulous context.
+
+    Returns
+    -------
+    FABulousSettings
+        The current FABulousSettings instance
+    """
+    global _context_instance
+
+    if _context_instance is None:
+        _context_instance = init_context(api_mode=True)
+    return _context_instance
+
+
+def reset_context() -> None:
+    """Reset the global context (primarily for testing)."""
+    global _context_instance
+    _context_instance = None
+    logger.debug("FABulous context reset")
+
+
+def add_var_to_global_env(key: str, value: str) -> None:
+    """Add or update a key-value pair to the global .env file.
+
+    Parameters
+    ----------
+    key: str
+        The environment variable key to add or update.
+    value: str
+        The value to set for the environment variable.
+    """
+    # Use user config directory for global .env file
+    user_config_dir = FAB_USER_CONFIG_DIR
+
+    if not user_config_dir.exists():
+        logger.info(f"Creating user config directory at {user_config_dir}")
+        user_config_dir.mkdir(parents=True, exist_ok=True)
+
+    env_file = user_config_dir / ".env"
+    if not env_file.exists():
+        env_file.touch()
+    set_key(env_file, key, value)
+
+
+def is_pdk_config_set() -> bool:
+    """Check if PDK root and PDK name are configured in the global context.
+
+    Returns
+    -------
+    bool
+        True if both ``pdk`` and ``pdk_root`` are set in the global context,
+        False otherwise.
+    """
+    return get_context().pdk is not None and get_context().pdk_root is not None
+
+
+def _log_settings_validation_error(error: ValidationError, project_dir: Path) -> None:
+    """Log a user-friendly message for a pydantic ValidationError."""
+    error_messages: list[str] = []
+
+    for err in error.errors():
+        field = ".".join(str(loc) for loc in err["loc"])
+        if field == "proj_dir":
+            error_messages.append(
+                f"'{project_dir}' is not a valid FABulous project "
+                "(missing .FABulous directory)."
+            )
+        elif field == "models_pack":
+            error_messages.append(
+                "Could not resolve the models pack because the project directory "
+                "is invalid."
+            )
+        else:
+            error_messages.append(f"{field}: {err['msg']}")
+
+    logger.error(
+        "Failed to initialize project settings:\n"
+        + "\n".join(f"  - {msg}" for msg in error_messages)
+    )

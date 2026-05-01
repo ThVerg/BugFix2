@@ -1,0 +1,24 @@
+# Python virtualenvs and caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# FABulous build artifacts
+build/
+build_icesoc/
+build_demo_fabric/
+*.fst
+*.vcd
+*.vvp
+
+# Logs
+fabulator*.log
+*.log
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store

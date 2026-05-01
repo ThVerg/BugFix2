@@ -1,0 +1,177 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "FABulous-FPGA"
+authors = [
+  { name = "Jing, Nguyen, Bea, Bardia, Dirk", email = "dirk.koch@manchester.ac.uk" },
+]
+description = "FABulous FPGA Fabric generator"
+readme = "README.md"
+requires-python = ">=3.12"
+dynamic = ["version"]
+license = { text = "Apache-2.0" }
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+]
+
+
+dependencies = [
+  'python-dotenv>=1.0.0',
+  'loguru>=0.7.0',
+  'requests>=2.0.0',
+  'cmd2>=2',
+  'bitarray>=3.3.0',
+  "pydantic>=2.12.1",
+  "pydantic-settings>=2.10.1",
+  "packaging>=25.0",
+  "typer>=0.20.0",
+  "FABulous-bit-gen>=0.2.0",
+  'PyYAML>=6.0.0',
+  'click>=8.0.0',
+  # OS-aware readline dependencies
+  'pyreadline3>=3.4.0; sys_platform == "win32"',
+  'gnureadline>=8.2.0; sys_platform != "win32"',
+  "librelane>=3.0.0",
+  "pick>=2.4.0",
+  "pymoo>=0.6.1.5",
+  "numpy>=2.3.4",
+  "dill>=0.4.0",
+  "networkx>=3.6.1",
+  "sdf-timing",
+  "ciel>=2.4.0",
+  "go-task-bin>=3.40.0",
+]
+
+[project.urls]
+Repository = "https://github.com/FPGA-Research/FABulous"
+Documentation = "https://fabulous.readthedocs.io"
+Releases = "https://github.com/FPGA-Research/FABulous/releases"
+Issues = "https://github.com/FPGA-Research/FABulous/issues"
+Discussions = "https://github.com/FPGA-Research/FABulous/discussions"
+
+
+[project.scripts]
+FABulous = "fabulous.fabulous:main"
+#alias for better usability
+fabulous = "fabulous.fabulous:main"
+
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme = "node-and-date"
+
+[tool.setuptools.packages.find]
+exclude = [
+  "docs",
+  "tests",
+  "scripts",
+  "nix",
+] # exclude packages matching these glob patterns (empty by default)
+
+[tool.setuptools.cmdclass]
+build_py = "build_hooks.BuildPyWithFabulousNix"
+
+
+[tool.setuptools.package-data]
+fabulous = ["**/*"]
+
+[tool.interrogate]
+ignore-init-method = false
+ignore-init-module = false
+ignore-magic = false
+ignore-semiprivate = false
+ignore-private = true
+ignore-property-decorators = false
+ignore-module = false
+ignore-nested-functions = false
+ignore-nested-classes = true
+ignore-setters = true
+ignore-overloaded-functions = true
+fail-under = 95
+ignore-regex = ".*Like$"
+# Exclude patterns - kept in sync with .gitignore
+# Note: interrogate doesn't natively support .gitignore files
+exclude = [
+  "setup.py",
+  "docs",
+  "build",
+  ".venv",
+  "venv",
+  "demo*",
+  "tests",
+  "**/__pycache__",
+  "*.egg-info",
+  ".vscode",
+  "oss-cad-suite",
+  "scripts",
+  ".claude",
+  "fabulous_nix",
+  ".codex",
+  "ttsim*",
+]
+
+[dependency-groups]
+dev = [
+  "cocotb>=2.0.0",
+  "deptry>=0.20.0",
+  "pre-commit>=4.2.0",
+  "pytest>=8.4.1",
+  "pytest-cov>=6.2.1",
+  "pytest-mock>=3.14.1",
+  "pytest-split>=0.10.0",
+  "ruff>=0.12.7",
+  "pyyaml>=6.0.0",
+  "interrogate>=1.7.0",
+]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+source = ["fabulous"]
+
+[tool.coverage.report]
+omit = [
+  "*/__init__.py",
+  "*/__pycache__/*",
+  "tests/*",
+  "demo/*",
+  "docs/*",
+  "build_hooks.py",
+  "fabulous_nix",
+]
+show_missing = true
+skip_covered = true
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.coverage.html]
+directory = "coverage_html"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: marks tests as slow (use --runslow to include)"]
+addopts = "-m 'not slow'"
+
+[tool.deptry]
+# Ignore platform-specific readline dependencies for DEP002 (defined but not used)
+# These are indirect requirements needed by cmd2 and other interactive CLI tools
+extend_exclude = [
+  "fabulous/fabric_generator/gds_generator/script",
+  "docs",
+  "build_hooks.py",
+]
+
+[tool.deptry.per_rule_ignores]
+DEP002 = ["pyreadline3", "gnureadline", "go-task-bin", "FABulous-bit-gen"]
+
+[tool.deptry.package_module_name_map]
+FABulous-bit-gen = "FABulous_bit_gen"
+
+[tool.uv.sources]
+sdf-timing = { git = "https://github.com/FPGA-Research/f4pga-sdf-timing.git" }

@@ -1,0 +1,46 @@
+name: Nix environment CI
+
+on:
+  push:
+    paths:
+      - "flake.nix"
+      - "*.lock"
+      - "nix/**"
+      - ".github/workflows/nix-env.yml"
+  pull_request:
+    paths:
+      - "flake.nix"
+      - "*.lock"
+      - "nix/**"
+      - ".github/workflows/nix-env.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nix-smoke-test:
+    name: Smoke test (Nix ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, ubuntu-22.04]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - uses: ./.github/actions/prepare_nix_environment
+
+      - name: DevShell smoke test
+        run: |
+          nix develop --command bash -c "which FABulous"
+          nix develop --command bash -c "FABulous --version"
+          nix develop --command bash -c "which openroad"
+          nix develop --command bash -c "openroad -version"
+          nix develop --command bash -c "which yosys"
+          nix develop --command bash -c "yosys --version"

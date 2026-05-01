@@ -1,0 +1,287 @@
+{
+  "nodes": {
+    "ciel": {
+      "inputs": {
+        "nix-eda": [
+          "librelane",
+          "nix-eda"
+        ]
+      },
+      "locked": {
+        "lastModified": 1764091696,
+        "narHash": "sha256-AWbkHL0zO3tD0mE3dZIcj8mVND7o3imTxOpEfOtlRDI=",
+        "owner": "fossi-foundation",
+        "repo": "ciel",
+        "rev": "afcb23d368614ffa1e7e96584ed33f839c71c576",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fossi-foundation",
+        "repo": "ciel",
+        "type": "github"
+      }
+    },
+    "devshell": {
+      "inputs": {
+        "nixpkgs": [
+          "librelane",
+          "nix-eda",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1768818222,
+        "narHash": "sha256-460jc0+CZfyaO8+w8JNtlClB2n4ui1RbHfPTLkpwhU8=",
+        "owner": "numtide",
+        "repo": "devshell",
+        "rev": "255a2b1725a20d060f566e4755dbf571bbbb5f76",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "devshell",
+        "type": "github"
+      }
+    },
+    "fabulator-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1754387121,
+        "narHash": "sha256-ASM3lgvdH+6t4rkTixATETVGcibPVWhsFFD2sWfRDCc=",
+        "owner": "FPGA-Research",
+        "repo": "FABulator",
+        "rev": "beccd4e4c58b9fc92fafaf082883c20367dbe5ba",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FPGA-Research",
+        "repo": "FABulator",
+        "rev": "beccd4e4c58b9fc92fafaf082883c20367dbe5ba",
+        "type": "github"
+      }
+    },
+    "flake-compat": {
+      "locked": {
+        "lastModified": 1733328505,
+        "narHash": "sha256-NeCCThCEP3eCl2l/+27kNNK7QrwZB1IJCrXfrbv5oqU=",
+        "rev": "ff81ac966bb2cae68946d5ed5fc4994f96d0ffec",
+        "revCount": 69,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/edolstra/flake-compat/1.1.0/01948eb7-9cba-704f-bbf3-3fa956735b52/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/edolstra/flake-compat/1.tar.gz"
+      }
+    },
+    "ghdl-bin-aarch64-darwin": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1772908613,
+        "narHash": "sha256-2qfMjiGlOxRLoDuMNBwBefABuE61i9ZtPYw4tOhaDFI=",
+        "type": "tarball",
+        "url": "https://github.com/ghdl/ghdl/releases/download/v6.0.0/ghdl-llvm-jit-6.0.0-macos15-aarch64.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/ghdl/ghdl/releases/download/v6.0.0/ghdl-llvm-jit-6.0.0-macos15-aarch64.tar.gz"
+      }
+    },
+    "ghdl-bin-x86_64-linux": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1772908664,
+        "narHash": "sha256-KwP6SEPS4tssAJIW46GmJpWe41zEyRQFGWv6/0eFTwQ=",
+        "type": "tarball",
+        "url": "https://github.com/ghdl/ghdl/releases/download/v6.0.0/ghdl-mcode-6.0.0-ubuntu24.04-x86_64.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/ghdl/ghdl/releases/download/v6.0.0/ghdl-mcode-6.0.0-ubuntu24.04-x86_64.tar.gz"
+      }
+    },
+    "librelane": {
+      "inputs": {
+        "ciel": "ciel",
+        "devshell": "devshell",
+        "flake-compat": "flake-compat",
+        "nix-eda": "nix-eda"
+      },
+      "locked": {
+        "lastModified": 1774611666,
+        "narHash": "sha256-NrfZm7GlFxIEIqaPB2SubKMV7DdqYzRtdRfIePMqwgM=",
+        "owner": "librelane",
+        "repo": "librelane",
+        "rev": "156f82dadc3ac58d958b6d497e5427a63dd59896",
+        "type": "github"
+      },
+      "original": {
+        "owner": "librelane",
+        "repo": "librelane",
+        "type": "github"
+      }
+    },
+    "nextpnr-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1774555950,
+        "narHash": "sha256-rtCnmqPG38PZQVa0bVMpDCGxKxMaygdcx+/LeAZwJbM=",
+        "owner": "YosysHQ",
+        "repo": "nextpnr",
+        "rev": "77ccf518d5201c21bb687e8d08cadb5cbce1382b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "YosysHQ",
+        "repo": "nextpnr",
+        "type": "github"
+      }
+    },
+    "nix-eda": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1773918136,
+        "narHash": "sha256-nSKBMGP8/ZC7qB3Lzd+FwM8REqOxlh8wpYDf2hlK6Gg=",
+        "owner": "fossi-foundation",
+        "repo": "nix-eda",
+        "rev": "8f990fb77529c09e540e453cd836af9930ec58db",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fossi-foundation",
+        "ref": "6.11.0",
+        "repo": "nix-eda",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1766201043,
+        "narHash": "sha256-eplAP+rorKKd0gNjV3rA6+0WMzb1X1i16F5m5pASnjA=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "b3aad468604d3e488d627c0b43984eb60e75e782",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixos-25.11",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "pyproject-build-systems": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "pyproject-nix": [
+          "pyproject-nix"
+        ],
+        "uv2nix": [
+          "uv2nix"
+        ]
+      },
+      "locked": {
+        "lastModified": 1773870109,
+        "narHash": "sha256-ZoTdqZP03DcdoyxvpFHCAek4bkPUTUPUF3oCCgc3dP4=",
+        "owner": "pyproject-nix",
+        "repo": "build-system-pkgs",
+        "rev": "b6e74f433b02fa4b8a7965ee24680f4867e2926f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pyproject-nix",
+        "repo": "build-system-pkgs",
+        "type": "github"
+      }
+    },
+    "pyproject-nix": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1774498001,
+        "narHash": "sha256-wTfdyzzrmpuqt4TQQNqilF91v0m5Mh1stNy9h7a/WK4=",
+        "owner": "pyproject-nix",
+        "repo": "pyproject.nix",
+        "rev": "794afa6eb588b498344f2eaa36ab1ceb7e6b0b09",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pyproject-nix",
+        "repo": "pyproject.nix",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "fabulator-src": "fabulator-src",
+        "ghdl-bin-aarch64-darwin": "ghdl-bin-aarch64-darwin",
+        "ghdl-bin-x86_64-linux": "ghdl-bin-x86_64-linux",
+        "librelane": "librelane",
+        "nextpnr-src": "nextpnr-src",
+        "nix-eda": [
+          "librelane",
+          "nix-eda"
+        ],
+        "nixpkgs": [
+          "librelane",
+          "nix-eda",
+          "nixpkgs"
+        ],
+        "pyproject-build-systems": "pyproject-build-systems",
+        "pyproject-nix": "pyproject-nix",
+        "uv2nix": "uv2nix",
+        "yosys-src": "yosys-src"
+      }
+    },
+    "uv2nix": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "pyproject-nix": [
+          "pyproject-nix"
+        ]
+      },
+      "locked": {
+        "lastModified": 1774929536,
+        "narHash": "sha256-dMTjy8hu4XFAdNHdcLtCryN3SHqSUFHHqDLep+3b2v4=",
+        "owner": "pyproject-nix",
+        "repo": "uv2nix",
+        "rev": "5d0e883867b1cf53263fcf1bfd34542d40abf5a9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pyproject-nix",
+        "repo": "uv2nix",
+        "type": "github"
+      }
+    },
+    "yosys-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1774954179,
+        "narHash": "sha256-4oJ8UlW9pzEFr/Y4QepzD/FZb7DEEKUjpXyKP/8oF58=",
+        "ref": "refs/heads/main",
+        "rev": "cede13a742854cd8f2eee6e4e836d51c15abd2c3",
+        "revCount": 16895,
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/YosysHQ/yosys"
+      },
+      "original": {
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/YosysHQ/yosys"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

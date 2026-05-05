@@ -34,10 +34,31 @@ from test_fabric_geometry import (
 )
 
 
-def render_mask(mask: list[list[bool]]) -> str:
-    return "\n        ".join(
-        "".join("#" if c else "." for c in row) for row in mask
-    )
+_BORDER_GLYPH = {
+    "CORNER": "C",
+    "NORTHSOUTH": "N",
+    "EASTWEST": "W",
+    "NONE": "o",
+}
+
+
+def render_classified_mask(mask: list[list[bool]], geometry: FabricGeometry) -> str:
+    """Render the fabric with each tile shown as its border-class glyph.
+
+    Legend: C = CORNER, N = NORTHSOUTH, W = EASTWEST, o = NONE (interior),
+    . = NULL.
+    """
+    rendered_rows = []
+    for r, row in enumerate(mask):
+        chars = []
+        for c, occupied in enumerate(row):
+            if not occupied:
+                chars.append(".")
+                continue
+            tg = geometry.tileGeomMap[f"T_{r}_{c}"]
+            chars.append(_BORDER_GLYPH[tg.border.name])
+        rendered_rows.append("".join(chars))
+    return "\n        ".join(rendered_rows)
 
 
 def border_breakdown(geometry: FabricGeometry) -> Counter:
@@ -58,7 +79,7 @@ def dump_fabric(idx: int, mask: list[list[bool]], out) -> tuple[int, int, int]:
         f"border={border}  fallback={fallback}  wires={wires}\n"
     )
     out.write(f"    classes: {dict(classes)}\n")
-    out.write(f"    mask:\n        {render_mask(mask)}\n\n")
+    out.write(f"    mask:\n        {render_classified_mask(mask, geometry)}\n\n")
     return border, fallback, wires
 
 
@@ -88,7 +109,10 @@ def main(out_path: Path) -> None:
             "# Format: dims, occupied tiles, border-tile count, "
             "fallback hits, wire-line count, border classification breakdown, mask\n"
         )
-        out.write("# Mask legend: '#' = tile, '.' = NULL\n\n")
+        out.write(
+            "# Mask legend: C = CORNER, N = NORTHSOUTH, W = EASTWEST, "
+            "o = NONE (interior), . = NULL\n\n"
+        )
 
         rng = random.Random(0xFAB00010)
         dump_section(

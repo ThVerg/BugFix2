@@ -65,11 +65,24 @@ Writes `random_fabrics_dump.txt` next to the script. Each fabric is rendered as:
 --- #0001  21x4  occupied=57  border=36  fallback=8  wires=456
     classes: {'CORNER': 5, 'NORTHSOUTH': 3, 'EASTWEST': 28, 'NONE': 21}
     mask:
-        ####
-        ####
+        CNNC
+        WooW
         ...
+        CNoC
+        ..W.
+        ..C.
 ```
 
-Fields: `dims · occupied tiles · border-tile count · fallback-path hits · total wire lines`, then a Counter of border classifications, then the ASCII-art mask (`#` = tile, `.` = NULL).
+Fields: `dims · occupied tiles · border-tile count · fallback-path hits · total wire lines`, then a Counter of border classifications, then the mask with each tile rendered as its border-class glyph.
+
+| Glyph | Meaning |
+|---|---|
+| `C` | CORNER (both axes border-classified) |
+| `N` | NORTHSOUTH (top/bottom edge or NULL above/below) |
+| `W` | EASTWEST (left/right edge or NULL left/right) |
+| `o` | NONE (interior tile, fully surrounded by tiles) |
+| `.` | NULL (no tile here) |
+
+This makes the T-shoulder, donut concavities, and 1-wide stems immediately legible — `CNoC` over `..W.` is unmistakably a stem-base junction.
 
 Section totals at the bottom of each section match the per-section summary lines printed by the test suite exactly. The committed `random_fabrics_dump.txt` is a reference snapshot; the seeds are fixed so re-running produces a byte-identical (modulo trailing newline) file.

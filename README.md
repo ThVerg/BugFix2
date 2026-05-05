@@ -7,7 +7,14 @@ Working copy of the WIP investigation into the FABulous T-shape fabric geometry 
 ```
 BugFix2/
 ├── FABulous/                          ← upstream FABulous (FPGA fabric generator)
-│   └── fabulous/fabric_generator/gen_fabric/gen_tile.py     (FIXED: ConfigBits guard)
+│   ├── fabulous/
+│   │   ├── fabric_generator/gen_fabric/gen_tile.py          (FIXED: ConfigBits guard)
+│   │   └── geometry_generator/{fabric,tile}_geometry.py     (FIXED: thin-fabric / NULL-adjacent border classification)
+│   └── tests/geometry_generator_test/                       ← geometry test suite + dev aids
+│       ├── test_fabric_geometry.py        (regressions, randomized stress, xfails for disconnected fabrics)
+│       ├── dump_random_fabrics.py         (per-fabric metrics dump for the stress corpus)
+│       ├── random_fabrics_dump.txt        (committed snapshot, 1314 fabrics, ~440 KB)
+│       └── README.md                      (test-suite overview + how to regenerate the dump)
 │
 ├── ICESOC_FABulous_user_project/      ← user project: RISC-V SoC + eFPGA fabric
 │   ├── fabric.csv                     (FIXED: added missing EE4BEG/WW4BEG ports to bot tiles)

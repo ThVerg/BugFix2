@@ -55,7 +55,15 @@ uv run ruff check fabulous/geometry_generator/fabric_geometry.py fabulous/geomet
 # All checks passed
 ```
 
-Randomized stress harness:
+Randomized stress harness (now committed at
+`tests/geometry_generator_test/test_fabric_geometry.py`, marked `@pytest.mark.slow`,
+opt-in via `pytest --runslow`). The original (uncommitted) harness produced the
+following numbers; the *committed* harness covers the same fabric counts and
+shape categories with fixed RNG seeds (`0xFAB00010`, `0xFAB00020`) so failures
+bisect, but uses different size bounds and so produces different per-fabric
+totals. Both pass.
+
+Original (uncommitted) run:
 
 - `250` random rectangular fabrics passed.
 - `1000` random T-shaped fabrics passed.
@@ -64,6 +72,23 @@ Randomized stress harness:
 - `75,210` border tiles checked.
 - `930` border tiles had no same-axis neighbour and used the new fallback path.
 - `2,506,264` aggregate wire lines generated.
+
+Committed harness run (`pytest --runslow -s`, three test functions):
+
+| Category | Fabrics | Border tiles | Fallback hits | Wire lines |
+|---|---|---|---|---|
+| Rectangular  |  250 |  6,090 |     0 | 100,152 |
+| T-shape      | 1000 | 33,565 | 1,738 | 559,536 |
+| Thin (1×N+N×1) |  64 |  1,056 |   930 |   8,448 |
+| **Total**    | **1,314** | **40,711** | **2,668** | **668,136** |
+
+The thin category's `930` matches the original handoff exactly — that count is
+deterministic (`Σ_{N=3..32} (N−2) × 2 = 930`, every interior tile of an `N≥3`
+1×N or N×1 fabric is a border-axis tile with no same-axis neighbour). The
+T-shape harness here is stricter than the original because it allows 1-wide
+stems (where a single column of stem tiles has NULL on both sides), so it
+produces real fallback hits inside T-shapes too — `1,738` of them, all of which
+must classify and route cleanly for the test to pass.
 
 Real user-project sanity check:
 

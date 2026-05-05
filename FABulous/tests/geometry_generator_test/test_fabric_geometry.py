@@ -304,3 +304,217 @@ def test_thin_fabrics_1xn_and_nx1() -> None:
     )
     assert total_border > 0
     assert total_fallback > 0
+
+
+# ============================================================================
+# Negative tests — fabrics that *should* fail under FabricGeometry, plus
+# a few atypical-but-valid topologies the fix is expected to handle.
+# These are NOT marked slow; they run by default to guard the input contract.
+# ============================================================================
+
+
+def test_empty_mask_raises() -> None:
+    """A fabric with zero rows is malformed input.
+
+    `make_fabric([])` builds a `Fabric` with `numberOfRows=0` and
+    `numberOfColumns=len(mask[0])` which crashes immediately on the empty list.
+    Documents that the geometry generator does not accept this — callers must
+    validate inputs upstream.
+    """
+    with pytest.raises(IndexError):
+        FabricGeometry(make_fabric([]))
+
+
+def test_zero_width_fabric_raises() -> None:
+    """A fabric with one row but zero columns is also malformed input.
+
+    Same root cause as the empty-mask case: the generator iterates by row /
+    column index assuming `numberOfColumns >= 1`. Zero columns trips an index
+    error during border classification.
+    """
+    with pytest.raises(IndexError):
+        FabricGeometry(make_fabric([[]]))
+
+
+def test_donut_topology_handles_internal_hole() -> None:
+    """A 5x5 fabric with a single NULL cell in the middle (a "donut").
+
+    The four tiles immediately around the hole each have a NULL on one of
+    their sides, so they should be classified as a single-axis border
+    (NORTHSOUTH or EASTWEST, not CORNER) and should successfully borrow
+    constraints from a neighbour on the opposite axis-side.
+
+    This is the same shape of regression as the T-shape internal-shoulder
+    test but with the concavity pinned in the middle instead of the edge.
+    """
+    geometry = FabricGeometry(
+        make_fabric(
+            [
+                [True, True, True,  True, True],
+                [True, True, True,  True, True],
+                [True, True, False, True, True],
+                [True, True, True,  True, True],
+                [True, True, True,  True, True],
+            ]
+        )
+    )
+    # Hole-adjacent tiles get a single-axis border classification.
+    assert geometry.tileGeomMap["T_1_2"].border == Border.NORTHSOUTH  # above hole
+    assert geometry.tileGeomMap["T_3_2"].border == Border.NORTHSOUTH  # below
+    assert geometry.tileGeomMap["T_2_1"].border == Border.EASTWEST    # left
+    assert geometry.tileGeomMap["T_2_3"].border == Border.EASTWEST    # right
+    # And those tiles should each have valid neighbour constraints (their
+    # NORTHSOUTH/EASTWEST lookup succeeds via the new fall-through-to-other-side
+    # logic).
+    for name in ("T_1_2", "T_3_2", "T_2_1", "T_2_3"):
+        assert geometry.tileGeomMap[name].neighbourConstraints is not None
+    assert_wire_locations_are_valid(geometry)
+
+
+def _count_islands(mask: list[list[bool]]) -> int:
+    """Count 4-connected components of `True` cells in `mask`.
+
+    A "fabric island" is a maximal set of `True` cells reachable from one
+    another via N/S/E/W steps. A fabric with >1 island is physically
+    disconnected — the geometry generator should reject it.
+    """
+    if not mask or not mask[0]:
+        return 0
+    rows, cols = len(mask), len(mask[0])
+    seen = [[False] * cols for _ in range(rows)]
+    islands = 0
+    for r0 in range(rows):
+        for c0 in range(cols):
+            if not mask[r0][c0] or seen[r0][c0]:
+                continue
+            islands += 1
+            stack = [(r0, c0)]
+            while stack:
+                r, c = stack.pop()
+                if not (0 <= r < rows and 0 <= c < cols):
+                    continue
+                if seen[r][c] or not mask[r][c]:
+                    continue
+                seen[r][c] = True
+                stack.extend(((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)))
+    return islands
+
+
+def _is_disconnected(mask: list[list[bool]]) -> bool:
+    """A fabric is disconnected if it has 0 or >=2 islands.
+
+    A 1-tile fabric counts as 1 island for this helper but is still
+    degenerate in the "no neighbours" sense; that case is asserted
+    separately by the isolated-tile test.
+    """
+    return _count_islands(mask) != 1
+
+
+# ---------------------------------------------------------------------------
+# Aspirational xfail tests for fabric topologies the generator should reject.
+#
+# `xfail(strict=True)` means: this test is expected to fail today (the
+# generator doesn't validate connectivity). The mark suppresses the failure
+# in CI, but if the test ever starts passing — i.e. someone adds a
+# connectivity check upstream and `FabricGeometry(...)` raises — pytest
+# reports XPASS and strict mode flips it to a hard FAIL, forcing whoever
+# fixed the bug to come delete the xfail label.
+#
+# Each test first asserts via `_count_islands` that its mask is genuinely
+# disconnected, so the test can't silently rot if the mask is edited.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    reason=(
+        "FabricGeometry doesn't validate connectivity. Any fabric split into "
+        "disconnected islands has no routable inter-region wires and no "
+        "coherent bitstream-load path, so the generator should reject it. "
+        "Currently it silently builds independent geometries for each island. "
+        "When connectivity validation is added upstream, this test starts "
+        "passing and the xfail mark should be removed."
+    ),
+    strict=True,
+)
+def test_disconnected_islands_should_be_rejected() -> None:
+    """Two 2x2 fabric islands separated by an all-NULL row."""
+    mask = [
+        [True,  True],
+        [True,  True],
+        [False, False],
+        [True,  True],
+        [True,  True],
+    ]
+    assert _count_islands(mask) == 2, "test mask is not actually disconnected"
+    with pytest.raises((ValueError, RuntimeError)):
+        FabricGeometry(make_fabric(mask))
+
+
+@pytest.mark.xfail(
+    reason=(
+        "Same connectivity-validation gap as above, but a horizontal split "
+        "(two side-by-side islands separated by an all-NULL column). When "
+        "connectivity validation lands this should also start passing."
+    ),
+    strict=True,
+)
+def test_horizontally_disconnected_islands_should_be_rejected() -> None:
+    """Two 2x2 fabric islands separated by a column of NULLs."""
+    mask = [
+        [True, True, False, True, True],
+        [True, True, False, True, True],
+    ]
+    assert _count_islands(mask) == 2, "test mask is not actually disconnected"
+    with pytest.raises((ValueError, RuntimeError)):
+        FabricGeometry(make_fabric(mask))
+
+
+@pytest.mark.xfail(
+    reason=(
+        "Single isolated tile completely surrounded by NULL is also a "
+        "degenerate disconnected fabric — the generator should reject it. "
+        "Currently it builds geometry for the lone CORNER tile and stops."
+    ),
+    strict=True,
+)
+def test_single_isolated_tile_should_be_rejected() -> None:
+    """One tile floating in a sea of NULL.
+
+    Counts as 1 island for `_count_islands` but is degenerate: the lone
+    tile has no in-fabric neighbour on any side.
+    """
+    mask = [
+        [False, False, False, False, False],
+        [False, False, False, False, False],
+        [False, False, True,  False, False],
+        [False, False, False, False, False],
+        [False, False, False, False, False],
+    ]
+    assert _count_islands(mask) == 1, "isolated-tile test mask is malformed"
+    # All four neighbours of the lone tile must be NULL.
+    assert not mask[1][2] and not mask[3][2] and not mask[2][1] and not mask[2][3]
+    with pytest.raises((ValueError, RuntimeError)):
+        FabricGeometry(make_fabric(mask))
+
+
+def test_l_shape_inner_corner_is_correctly_classified() -> None:
+    """L-shaped fabric: stem is one column wide, base is the bottom row.
+
+    Tile T_2_1 sits at the inner corner of the L (NULL above, real tile
+    below and to the right), so its only NULL adjacency is on the north
+    side. The new classification widens NORTHSOUTH to include that case.
+    """
+    geometry = FabricGeometry(
+        make_fabric(
+            [
+                [True, False, False],
+                [True, False, False],
+                [True, True,  True ],
+            ]
+        )
+    )
+    # Stem column (single-cell-wide) is EASTWEST border throughout
+    assert geometry.tileGeomMap["T_1_0"].border == Border.EASTWEST
+    # Inner corner: NULL above, real to right and below → NORTHSOUTH
+    assert geometry.tileGeomMap["T_2_1"].border == Border.NORTHSOUTH
+    assert_wire_locations_are_valid(geometry)

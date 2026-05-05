@@ -1,0 +1,66 @@
+===========================================================================
+Pytest results — 2026-05-05 14:22:41 EEST
+FABulous commit: 278f7ab (Geometry tests: drop @pytest.mark.slow from stress harness, run by default)
+===========================================================================
+
+### tests/geometry_generator_test/test_fabric_geometry.py
+
+warning: `VIRTUAL_ENV=/home/h__t_/oss-cad-suite` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.2, pluggy-1.6.0 -- /mnt/c/Users/H__T_/Desktop/FanisProject/BugFix2/FABulous/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /mnt/c/Users/H__T_/Desktop/FanisProject/BugFix2/FABulous
+configfile: pyproject.toml
+plugins: anyio-4.13.0, cov-7.1.0, mock-3.15.1, split-0.11.0
+collecting ... collected 13 items
+
+tests/geometry_generator_test/test_fabric_geometry.py::test_one_row_fabric_generates_without_vertical_neighbour PASSED
+tests/geometry_generator_test/test_fabric_geometry.py::test_one_column_fabric_generates_without_horizontal_neighbour PASSED
+tests/geometry_generator_test/test_fabric_geometry.py::test_t_shape_internal_edges_align_to_in_fabric_neighbours PASSED
+tests/geometry_generator_test/test_fabric_geometry.py::test_randomized_rectangular_fabrics 
+Rectangular: 250 fabrics, 6090 border tiles, 0 fallback hits, 100152 wire lines
+PASSED
+tests/geometry_generator_test/test_fabric_geometry.py::test_randomized_t_shape_fabrics 
+T-shape: 1000 fabrics, 33565 border tiles, 1738 fallback hits, 559536 wire lines
+PASSED
+tests/geometry_generator_test/test_fabric_geometry.py::test_thin_fabrics_1xn_and_nx1 
+Thin: 64 fabrics, 1056 border tiles, 930 fallback hits, 8448 wire lines
+PASSED
+tests/geometry_generator_test/test_fabric_geometry.py::test_empty_mask_raises PASSED
+tests/geometry_generator_test/test_fabric_geometry.py::test_zero_width_fabric_raises PASSED
+tests/geometry_generator_test/test_fabric_geometry.py::test_donut_topology_handles_internal_hole PASSED
+tests/geometry_generator_test/test_fabric_geometry.py::test_disconnected_islands_should_be_rejected XFAIL
+tests/geometry_generator_test/test_fabric_geometry.py::test_horizontally_disconnected_islands_should_be_rejected XFAIL
+tests/geometry_generator_test/test_fabric_geometry.py::test_single_isolated_tile_should_be_rejected XFAIL
+tests/geometry_generator_test/test_fabric_geometry.py::test_l_shape_inner_corner_is_correctly_classified PASSED
+
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/cloup/_util.py:10
+  /mnt/c/Users/H__T_/Desktop/FanisProject/BugFix2/FABulous/.venv/lib/python3.12/site-packages/cloup/_util.py:10: DeprecationWarning: The '__version__' attribute is deprecated and will be removed in Click 9.1. Use feature detection or 'importlib.metadata.version("click")' instead.
+    click_version_tuple = tuple(click.__version__.split('.'))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== 10 passed, 3 xfailed, 1 warning in 10.75s ===================
+
+===========================================================================
+
+### tests/cli_test/test_cli.py::test_gen_geometry
+
+warning: `VIRTUAL_ENV=/home/h__t_/oss-cad-suite` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.2, pluggy-1.6.0 -- /mnt/c/Users/H__T_/Desktop/FanisProject/BugFix2/FABulous/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /mnt/c/Users/H__T_/Desktop/FanisProject/BugFix2/FABulous
+configfile: pyproject.toml
+plugins: anyio-4.13.0, cov-7.1.0, mock-3.15.1, split-0.11.0
+collecting ... collected 1 item
+
+tests/cli_test/test_cli.py::test_gen_geometry PASSED                     [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/cloup/_util.py:10
+  /mnt/c/Users/H__T_/Desktop/FanisProject/BugFix2/FABulous/.venv/lib/python3.12/site-packages/cloup/_util.py:10: DeprecationWarning: The '__version__' attribute is deprecated and will be removed in Click 9.1. Use feature detection or 'importlib.metadata.version("click")' instead.
+    click_version_tuple = tuple(click.__version__.split('.'))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========================= 1 passed, 1 warning in 1.73s =========================

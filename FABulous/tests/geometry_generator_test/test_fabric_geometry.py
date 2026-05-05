@@ -166,8 +166,8 @@ def test_t_shape_internal_edges_align_to_in_fabric_neighbours() -> None:
 
 # ============================================================================
 # Randomized stress harness — reproduces the 250 / 1000 / 64 fabric counts
-# documented in CLAUDE_HANDOFF.md. Marked `slow` (excluded from default test
-# runs); enable with `pytest --runslow`. Seeds are fixed so failures bisect.
+# documented in CLAUDE_HANDOFF.md. Always run; seeds are fixed so failures
+# bisect deterministically.
 # ============================================================================
 
 
@@ -239,7 +239,6 @@ def _stats_for(geometry: FabricGeometry) -> tuple[int, int, int]:
     return border, fallback, wires
 
 
-@pytest.mark.slow
 def test_randomized_rectangular_fabrics() -> None:
     """250 random rectangular fabrics. No tile should hit the fallback."""
     rng = random.Random(0xFAB00010)
@@ -262,7 +261,6 @@ def test_randomized_rectangular_fabrics() -> None:
     assert total_border > 0
 
 
-@pytest.mark.slow
 def test_randomized_t_shape_fabrics() -> None:
     """1000 random T-shape fabrics. Concavity tiles must classify cleanly."""
     rng = random.Random(0xFAB00020)
@@ -282,7 +280,6 @@ def test_randomized_t_shape_fabrics() -> None:
     assert total_border > 0
 
 
-@pytest.mark.slow
 def test_thin_fabrics_1xn_and_nx1() -> None:
     """All 1xN and Nx1 fabrics through N=32 (64 total).
 

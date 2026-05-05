@@ -38,6 +38,30 @@ neighbour to borrow wire constraints from.
      - `1xN` fabric generation with no vertical neighbour.
      - `Nx1` fabric generation with no horizontal neighbour.
      - T-shape internal shoulder tiles aligning to adjacent in-fabric neighbours.
+   - Added randomized stress tests (always run; no opt-in flag):
+     - 250 random rectangular fabrics, fixed seed `0xFAB00010`.
+     - 1000 random T-shaped fabrics (incl. 1-wide stems), seed `0xFAB00020`.
+     - All `1xN` and `Nx1` fabrics for `N=1..32` (64 fabrics, deterministic).
+   - Added boundary / negative tests:
+     - `pytest.raises(IndexError)` for empty mask `[]`.
+     - `pytest.raises(IndexError)` for zero-width row `[[]]`.
+     - Donut (5x5 with center NULL) — hole-adjacent tiles classified
+       NORTHSOUTH/EASTWEST and get neighbour constraints.
+     - L-shape inner corner — single-axis NULL-adjacency classification.
+   - Added `@pytest.mark.xfail(strict=True)` aspirational tests for
+     fabrics the generator *should* reject but currently doesn't (no
+     connectivity check upstream — generator silently builds geometry
+     for each disconnected island):
+     - Vertical split: `TT/TT/FF/TT/TT` (NULL row between two 2x2 islands).
+     - Horizontal split: `TT|F|TT` (NULL column between two 2x2 islands).
+     - Single isolated tile in a 5x5 NULL sea.
+   - Added `_count_islands(mask)` BFS helper so each xfail test asserts
+     its mask is genuinely disconnected before invoking `FabricGeometry`.
+     Helper lives in the test file only — no production code change.
+   - When connectivity validation is added in `FabricGeometry.__init__`
+     (e.g. raise `ValueError` if `_count_islands(mask) != 1`), the three
+     xfail tests flip to XPASS, strict mode fails CI, and the xfail
+     marks should be removed.
 
 ## Verification Run
 
@@ -46,7 +70,7 @@ Focused tests:
 ```bash
 cd /home/theofanis/BugFix2/FABulous
 uv run pytest tests/geometry_generator_test/test_fabric_geometry.py -q
-# 3 passed
+# 10 passed, 3 xfailed
 
 uv run pytest tests/cli_test/test_cli.py::test_gen_geometry -q
 # 1 passed
@@ -56,10 +80,10 @@ uv run ruff check fabulous/geometry_generator/fabric_geometry.py fabulous/geomet
 ```
 
 Randomized stress harness (now committed at
-`tests/geometry_generator_test/test_fabric_geometry.py`, marked `@pytest.mark.slow`,
-opt-in via `pytest --runslow`). The original (uncommitted) harness produced the
-following numbers; the *committed* harness covers the same fabric counts and
-shape categories with fixed RNG seeds (`0xFAB00010`, `0xFAB00020`) so failures
+`tests/geometry_generator_test/test_fabric_geometry.py`, runs by default — no
+opt-in flag). The original (uncommitted) harness produced the following
+numbers; the *committed* harness covers the same fabric counts and shape
+categories with fixed RNG seeds (`0xFAB00010`, `0xFAB00020`) so failures
 bisect, but uses different size bounds and so produces different per-fabric
 totals. Both pass.
 
@@ -73,7 +97,7 @@ Original (uncommitted) run:
 - `930` border tiles had no same-axis neighbour and used the new fallback path.
 - `2,506,264` aggregate wire lines generated.
 
-Committed harness run (`pytest --runslow -s`, three test functions):
+Committed harness run (three test functions, run via `pytest -s`):
 
 | Category | Fabrics | Border tiles | Fallback hits | Wire lines |
 |---|---|---|---|---|

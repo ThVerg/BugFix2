@@ -12,6 +12,7 @@ module W_CPU_IO_bot
         output  [3:0] E1BEG,        //Port(Name=E1BEG,IO=OUTPUT,XOffset=1,YOffset=0,WireCount=4,Side=E)
         output  [7:0] E2BEG,        //Port(Name=E2BEG,IO=OUTPUT,XOffset=1,YOffset=0,WireCount=8,Side=E)
         output  [7:0] E2BEGb,        //Port(Name=E2BEGb,IO=OUTPUT,XOffset=1,YOffset=0,WireCount=8,Side=E)
+        output  [15:0] EE4BEG,        //Port(Name=EE4BEG,IO=OUTPUT,XOffset=4,YOffset=0,WireCount=4,Side=E)
         output  [11:0] E6BEG,        //Port(Name=E6BEG,IO=OUTPUT,XOffset=6,YOffset=0,WireCount=2,Side=E)
         input  [3:0] W1END,        //Port(Name=W1END,IO=INPUT,XOffset=-1,YOffset=0,WireCount=4,Side=E)
         input  [7:0] W2MID,        //Port(Name=W2MID,IO=INPUT,XOffset=-1,YOffset=0,WireCount=8,Side=E)
@@ -834,6 +835,22 @@ W_CPU_IO_bot_switch_matrix Inst_W_CPU_IO_bot_switch_matrix (
     .E2BEGb5(E2BEGb[5]),
     .E2BEGb6(E2BEGb[6]),
     .E2BEGb7(E2BEGb[7]),
+    .EE4BEG0(EE4BEG[0]),
+    .EE4BEG1(EE4BEG[1]),
+    .EE4BEG2(EE4BEG[2]),
+    .EE4BEG3(EE4BEG[3]),
+    .EE4BEG4(EE4BEG[4]),
+    .EE4BEG5(EE4BEG[5]),
+    .EE4BEG6(EE4BEG[6]),
+    .EE4BEG7(EE4BEG[7]),
+    .EE4BEG8(EE4BEG[8]),
+    .EE4BEG9(EE4BEG[9]),
+    .EE4BEG10(EE4BEG[10]),
+    .EE4BEG11(EE4BEG[11]),
+    .EE4BEG12(EE4BEG[12]),
+    .EE4BEG13(EE4BEG[13]),
+    .EE4BEG14(EE4BEG[14]),
+    .EE4BEG15(EE4BEG[15]),
     .E6BEG0(E6BEG[0]),
     .E6BEG1(E6BEG[1]),
     .E6BEG2(E6BEG[2]),

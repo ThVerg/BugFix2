@@ -130,6 +130,22 @@ module E_CPU_IO_bot_switch_matrix
         output  W2BEGb5,
         output  W2BEGb6,
         output  W2BEGb7,
+        output  WW4BEG0,
+        output  WW4BEG1,
+        output  WW4BEG2,
+        output  WW4BEG3,
+        output  WW4BEG4,
+        output  WW4BEG5,
+        output  WW4BEG6,
+        output  WW4BEG7,
+        output  WW4BEG8,
+        output  WW4BEG9,
+        output  WW4BEG10,
+        output  WW4BEG11,
+        output  WW4BEG12,
+        output  WW4BEG13,
+        output  WW4BEG14,
+        output  WW4BEG15,
         output  W6BEG0,
         output  W6BEG1,
         output  W6BEG2,
@@ -276,6 +292,54 @@ assign W2BEGb6 = E2END1;
 
  //switch matrix multiplexer W2BEGb7 MUX-1
 assign W2BEGb7 = OPA_O3;
+
+ //switch matrix multiplexer WW4BEG0 MUX-1
+assign WW4BEG0 = EE4END15;
+
+ //switch matrix multiplexer WW4BEG1 MUX-1
+assign WW4BEG1 = EE4END14;
+
+ //switch matrix multiplexer WW4BEG2 MUX-1
+assign WW4BEG2 = EE4END13;
+
+ //switch matrix multiplexer WW4BEG3 MUX-1
+assign WW4BEG3 = EE4END12;
+
+ //switch matrix multiplexer WW4BEG4 MUX-1
+assign WW4BEG4 = EE4END11;
+
+ //switch matrix multiplexer WW4BEG5 MUX-1
+assign WW4BEG5 = EE4END10;
+
+ //switch matrix multiplexer WW4BEG6 MUX-1
+assign WW4BEG6 = EE4END9;
+
+ //switch matrix multiplexer WW4BEG7 MUX-1
+assign WW4BEG7 = EE4END8;
+
+ //switch matrix multiplexer WW4BEG8 MUX-1
+assign WW4BEG8 = EE4END7;
+
+ //switch matrix multiplexer WW4BEG9 MUX-1
+assign WW4BEG9 = EE4END6;
+
+ //switch matrix multiplexer WW4BEG10 MUX-1
+assign WW4BEG10 = EE4END5;
+
+ //switch matrix multiplexer WW4BEG11 MUX-1
+assign WW4BEG11 = EE4END4;
+
+ //switch matrix multiplexer WW4BEG12 MUX-1
+assign WW4BEG12 = EE4END3;
+
+ //switch matrix multiplexer WW4BEG13 MUX-1
+assign WW4BEG13 = EE4END2;
+
+ //switch matrix multiplexer WW4BEG14 MUX-1
+assign WW4BEG14 = EE4END1;
+
+ //switch matrix multiplexer WW4BEG15 MUX-1
+assign WW4BEG15 = EE4END0;
 
  //switch matrix multiplexer W6BEG0 MUX-1
 assign W6BEG0 = OPA_O0;

@@ -86,8 +86,20 @@ wire [36-1:0] E_RES2; //to RISCV
 wire [31:0] eFPGA_operand_a_1_o;
 wire [31:0] SelfWriteData; // configuration data write port
 wire        SelfWriteStrobe; // must decode address and write enable
+wire        SelfWriteStrobe_from_cpu; // CPU's normal driver of SelfWriteStrobe
 assign W_OPA[34:3]   = eFPGA_operand_a_1_o;
-assign SelfWriteData = eFPGA_operand_a_1_o;
+
+// Testbench override path for fast bitstream loading. When tb_sw_force=0
+// (default), the SelfWrite path behaves normally — driven by the CPU's
+// eFPGA_write_strobe / operand_a outputs. When the testbench raises
+// tb_sw_force, it can drive tb_sw_data / tb_sw_strobe directly to push
+// bitstream frames into the eFPGA's Config FSM, skipping the slow UART
+// simulation.
+reg        tb_sw_force  = 1'b0;
+reg [31:0] tb_sw_data   = 32'h0;
+reg        tb_sw_strobe = 1'b0;
+assign SelfWriteData   = tb_sw_force ? tb_sw_data   : eFPGA_operand_a_1_o;
+assign SelfWriteStrobe = tb_sw_force ? tb_sw_strobe : SelfWriteStrobe_from_cpu;
 
 reg debug_req_1;
 reg fetch_enable_1;
@@ -123,7 +135,7 @@ icesoc_top   icesoc_top_i (
     .eFPGA_result_a_1_i(W_RES0[31:0]),
     .eFPGA_result_b_1_i(W_RES1[31:0]),
     .eFPGA_result_c_1_i(W_RES2[31:0]),
-    .eFPGA_write_strobe_1_o(SelfWriteStrobe),//todo write strobe connection
+    .eFPGA_write_strobe_1_o(SelfWriteStrobe_from_cpu),//todo write strobe connection
     .eFPGA_fpga_done_1_i(W_RES1[34]), 
     .eFPGA_delay_1_o(W_OPB[33:32]),
     .eFPGA_en_1_o(W_OPA[35]),
@@ -234,6 +246,50 @@ generate
         wire resetn_local;
         assign resetn_local = resetn;
 
+        // The fabric's OPA_I/OPB_I/RES*_O are 72-bit busses with W column (X=3)
+        // and E column (X=11) bits INTERLEAVED per fabric row Y, not split halves.
+        // Inside each 4-bit BEL slot the pin order is bit-reversed relative to
+        // the user_design vector. Build the interleaved busses from the
+        // CPU-side W_/E_ signals — this mirrors the mapping in
+        // ICESOC_FABulous_user_project/Test/top_tb.v (verified against
+        // top_wrapper.v BEL placements).
+        wire [71:0] eFPGA_OPA_I_bus, eFPGA_OPB_I_bus;
+        wire [71:0] eFPGA_RES0_O_bus, eFPGA_RES1_O_bus, eFPGA_RES2_O_bus;
+
+        // Testbench-driven operand override. When tb_drive_ops=1 the
+        // testbench's tb_W_OPA / tb_W_OPB / tb_E_OPA / tb_E_OPB feed the
+        // fabric directly, bypassing the CPU. Lets the testbench drive
+        // deterministic stress patterns through the same interleave +
+        // bit-reverse mapping the CPU normally uses.
+        reg        tb_drive_ops = 1'b0;
+        reg [35:0] tb_W_OPA = 36'h0;
+        reg [35:0] tb_W_OPB = 36'h0;
+        reg [35:0] tb_E_OPA = 36'h0;
+        reg [35:0] tb_E_OPB = 36'h0;
+
+        wire [35:0] W_OPA_eff = tb_drive_ops ? tb_W_OPA : W_OPA;
+        wire [35:0] W_OPB_eff = tb_drive_ops ? tb_W_OPB : W_OPB;
+        wire [35:0] E_OPA_eff = tb_drive_ops ? tb_E_OPA : E_OPA;
+        wire [35:0] E_OPB_eff = tb_drive_ops ? tb_E_OPB : E_OPB;
+
+        genvar gi;
+        // already inside an outer generate (line 181) — use the for-loop
+        // directly without a nested generate/endgenerate.
+        for (gi = 0; gi < 9; gi = gi + 1) begin : eFPGA_io_map
+            // W column (X=3): fabric bits gi*8 + 0..3
+            assign eFPGA_OPA_I_bus[gi*8 +: 4] = {W_OPA_eff[gi*4], W_OPA_eff[gi*4+1], W_OPA_eff[gi*4+2], W_OPA_eff[gi*4+3]};
+            assign eFPGA_OPB_I_bus[gi*8 +: 4] = {W_OPB_eff[gi*4], W_OPB_eff[gi*4+1], W_OPB_eff[gi*4+2], W_OPB_eff[gi*4+3]};
+            assign W_RES0[gi*4 +: 4] = {eFPGA_RES0_O_bus[gi*8], eFPGA_RES0_O_bus[gi*8+1], eFPGA_RES0_O_bus[gi*8+2], eFPGA_RES0_O_bus[gi*8+3]};
+            assign W_RES1[gi*4 +: 4] = {eFPGA_RES1_O_bus[gi*8], eFPGA_RES1_O_bus[gi*8+1], eFPGA_RES1_O_bus[gi*8+2], eFPGA_RES1_O_bus[gi*8+3]};
+            assign W_RES2[gi*4 +: 4] = {eFPGA_RES2_O_bus[gi*8], eFPGA_RES2_O_bus[gi*8+1], eFPGA_RES2_O_bus[gi*8+2], eFPGA_RES2_O_bus[gi*8+3]};
+            // E column (X=11): fabric bits gi*8 + 4..7
+            assign eFPGA_OPA_I_bus[gi*8+4 +: 4] = {E_OPA_eff[gi*4], E_OPA_eff[gi*4+1], E_OPA_eff[gi*4+2], E_OPA_eff[gi*4+3]};
+            assign eFPGA_OPB_I_bus[gi*8+4 +: 4] = {E_OPB_eff[gi*4], E_OPB_eff[gi*4+1], E_OPB_eff[gi*4+2], E_OPB_eff[gi*4+3]};
+            assign E_RES0[gi*4 +: 4] = {eFPGA_RES0_O_bus[gi*8+4], eFPGA_RES0_O_bus[gi*8+5], eFPGA_RES0_O_bus[gi*8+6], eFPGA_RES0_O_bus[gi*8+7]};
+            assign E_RES1[gi*4 +: 4] = {eFPGA_RES1_O_bus[gi*8+4], eFPGA_RES1_O_bus[gi*8+5], eFPGA_RES1_O_bus[gi*8+6], eFPGA_RES1_O_bus[gi*8+7]};
+            assign E_RES2[gi*4 +: 4] = {eFPGA_RES2_O_bus[gi*8+4], eFPGA_RES2_O_bus[gi*8+5], eFPGA_RES2_O_bus[gi*8+6], eFPGA_RES2_O_bus[gi*8+7]};
+        end
+
         eFPGA_top eFPGA_top_i (
         // #(
         //     .include_eFPGA(1),
@@ -252,11 +308,11 @@ generate
             .Config_accessC(Config_accessC),
             .I_top(I_top),
             .O_top(O_top),
-            .OPA_I({W_OPA, E_OPA}),
-            .OPB_I({W_OPB, E_OPB}),
-            .RES0_O({W_RES0, E_RES0}),
-            .RES1_O({W_RES1, E_RES1}),
-            .RES2_O({W_RES2, E_RES2}),
+            .OPA_I(eFPGA_OPA_I_bus),
+            .OPB_I(eFPGA_OPB_I_bus),
+            .RES0_O(eFPGA_RES0_O_bus),
+            .RES1_O(eFPGA_RES1_O_bus),
+            .RES2_O(eFPGA_RES2_O_bus),
             // .W_OPA(W_OPA),
             // .W_OPB(W_OPB),
             // .W_RES0(W_RES0),
@@ -271,7 +327,10 @@ generate
             .T_top(T_top),
             //Config related ports
             .CLK(CLK),
-            .resetn(), //this does not exist in the original rtl
+            .resetn(~wb_rst_i), // wired: wb_rst_i is the SoC's active-high reset,
+                                 // eFPGA needs active-low resetn. Was unconnected (Z),
+                                 // which left the Config FSM in an undefined state and
+                                 // blocked bitstream loading entirely.
             .SelfWriteStrobe(SelfWriteStrobe),
             .SelfWriteData(SelfWriteData),
             .Rx(Rx),

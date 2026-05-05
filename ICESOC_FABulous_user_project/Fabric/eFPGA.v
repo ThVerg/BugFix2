@@ -2754,6 +2754,7 @@ wire[15:0] Tile_X2Y9_SS4BEG;
 wire[3:0] Tile_X3Y9_E1BEG;
 wire[7:0] Tile_X3Y9_E2BEG;
 wire[7:0] Tile_X3Y9_E2BEGb;
+wire[15:0] Tile_X3Y9_EE4BEG;
 wire[11:0] Tile_X3Y9_E6BEG;
 wire[3:0] Tile_X3Y9_S1BEG;
 wire[7:0] Tile_X3Y9_S2BEG;
@@ -2910,6 +2911,7 @@ wire[11:0] Tile_X10Y9_W6BEG;
 wire[3:0] Tile_X11Y9_W1BEG;
 wire[7:0] Tile_X11Y9_W2BEG;
 wire[7:0] Tile_X11Y9_W2BEGb;
+wire[15:0] Tile_X11Y9_WW4BEG;
 wire[11:0] Tile_X11Y9_W6BEG;
 wire[3:0] Tile_X11Y9_S1BEG;
 wire[7:0] Tile_X11Y9_S2BEG;
@@ -8534,6 +8536,7 @@ W_CPU_IO_bot
     .E1BEG(Tile_X3Y9_E1BEG),
     .E2BEG(Tile_X3Y9_E2BEG),
     .E2BEGb(Tile_X3Y9_E2BEGb),
+    .EE4BEG(Tile_X3Y9_EE4BEG),
     .E6BEG(Tile_X3Y9_E6BEG),
     .S1BEG(Tile_X3Y9_S1BEG),
     .S2BEG(Tile_X3Y9_S2BEG),
@@ -8582,7 +8585,8 @@ DSP
     .Tile_X0Y0_E1END(Tile_X3Y9_E1BEG),
     .Tile_X0Y0_E2MID(Tile_X3Y9_E2BEG),
     .Tile_X0Y0_E2END(Tile_X3Y9_E2BEGb),
-    .Tile_X0Y0_EE4END(Tile_X3Y9_E6BEG),
+    .Tile_X0Y0_EE4END(Tile_X3Y9_EE4BEG),
+    .Tile_X0Y0_E6END(Tile_X3Y9_E6BEG),
     .Tile_X0Y0_S1END(Tile_X4Y8_S1BEG),
     .Tile_X0Y0_S2MID(Tile_X4Y8_S2BEG),
     .Tile_X0Y0_S2END(Tile_X4Y8_S2BEGb),
@@ -8998,7 +9002,8 @@ LUT4AB
     .W1END(Tile_X11Y9_W1BEG),
     .W2MID(Tile_X11Y9_W2BEG),
     .W2END(Tile_X11Y9_W2BEGb),
-    .WW4END(Tile_X11Y9_W6BEG),
+    .WW4END(Tile_X11Y9_WW4BEG),
+    .W6END(Tile_X11Y9_W6BEG),
     .N1BEG(Tile_X10Y9_N1BEG),
     .N2BEG(Tile_X10Y9_N2BEG),
     .N2BEGb(Tile_X10Y9_N2BEGb),
@@ -9052,6 +9057,7 @@ E_CPU_IO_bot
     .W1BEG(Tile_X11Y9_W1BEG),
     .W2BEG(Tile_X11Y9_W2BEG),
     .W2BEGb(Tile_X11Y9_W2BEGb),
+    .WW4BEG(Tile_X11Y9_WW4BEG),
     .W6BEG(Tile_X11Y9_W6BEG),
     .S1BEG(Tile_X11Y9_S1BEG),
     .S2BEG(Tile_X11Y9_S2BEG),

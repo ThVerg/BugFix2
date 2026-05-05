@@ -1,57 +1,6 @@
 // Models for the embedded FPGA fabric
-// LHD1 Latch area 11.76
-//`timescale 1ns/1ns
-/* module LHD1_old (D, E, Q, QN);
-	input D;     // global signal 1: configuration, 0: operation
-	input E;
-	output Q;
-	output QN; 
 
-	wire M_set_gate, M_reset_gate;
-	wire S_set_gate, S_reset_gate;
-	wire M_q, M_qn;
-	wire S_q, S_qn;
-
-	// master
-	assign M_set_gate = ~(D & E);
-	assign M_reset_gate = ~((~D) & E);
-	assign M_q = ~(M_qn & M_set_gate);
-	assign M_qn = ~(M_q & M_reset_gate);
-
-	assign Q = M_q;
-	assign QN = M_qn;
-
-endmodule
-
-module LHQD1 (input D, E, output reg Q);
-    always @(*) begin
-        if (E == 1'b1) begin
-            Q = D;
-        end
-    end
-endmodule
-
-module LHQD1_old (D, E, Q);
-	input D;// global signal 1: configuration, 0: operation
-	input E;
-	output Q;
-
-	wire M_set_gate;
-	wire M_reset_gate;
-	wire M_q;
-	wire M_qn;
-
-// master
-	assign M_set_gate = ~(D & E);
-	assign M_reset_gate = ~((~D) & E);
-	assign M_q = ~(M_qn & M_set_gate);
-	assign M_qn = (M_q & M_reset_gate);
-
-	assign Q = M_q;
-
-endmodule */
-
-module LHQD1 (input D, E, output reg Q, QN);
+module config_latch (input D, E, output reg Q, QN);
     always @(*)
     begin
         if (E == 1'b1) begin
@@ -61,7 +10,7 @@ module LHQD1 (input D, E, output reg Q, QN);
     end
 endmodule
 
-// (MUX4PTv4) and 1.2ns (MUX16PTv2) in worse case when all select bits=0, so I think they work fine with f=50MHz. 
+// (MUX4PTv4) and 1.2ns (MUX16PTv2) in worse case when all select bits=0, so I think they work fine with f=50MHz.
 // The area are HxW = 7um x 9.86um (MUX4PTv4) and 7um x 44.72um (MUX16PTv2). 
 // Please note, the pins are named as IN1, IN2, ..., IN16 for inputs, S1, .., S4 for selects and OUT for output.
 

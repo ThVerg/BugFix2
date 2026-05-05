@@ -525,7 +525,15 @@ def generateTile(writer: CodeGenerator, fabric: Fabric, tile: Tile) -> None:
         portsPairs.append(("CONFout", f"conf_data({belCounter + 1})"))
         portsPairs.append(("CLK", "CLK"))
 
-    if fabric.configBitMode == ConfigBitMode.FRAME_BASED and tile.globalConfigBits > 0:
+    # Only pass ConfigBits to the switch matrix when it actually has config bits.
+    # tile.globalConfigBits sums BEL bits + switch matrix bits; if all bits go to BELs
+    # (belConfigBitsCounter == tile.globalConfigBits), the switch matrix has 0 bits,
+    # its module omits the ConfigBits port (gen_switchmatrix.py guards on noConfigBits>0),
+    # and the slice ConfigBits[N-1:N] would be empty and reference a non-existent port.
+    if (
+        fabric.configBitMode == ConfigBitMode.FRAME_BASED
+        and tile.globalConfigBits > belConfigBitsCounter
+    ):
         portsPairs.append(
             (
                 "ConfigBits",
